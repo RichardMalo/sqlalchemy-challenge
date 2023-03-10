@@ -28,13 +28,18 @@ def welcome():
     """List all available api routes."""
     return (
         f"Available Routes:<br/>"
-        f"/api/v1.0/precipitation<br>"
-        f"/api/v1.0/stations<br>"
-        f"/api/v1.0/tobs<br>"
+        f"/api/v1.0/precipitation<br/>"
+        f"/api/v1.0/stations<br/>"
+        f"/api/v1.0/tobs<br/>"
+        f"USE format: 'yyyy-mm-dd' for API below.<br/>"
+        f"/api/v1.0/startdate<br/>"
+        f"USE format: 'yyyy-mm-dd'/'yyyy-mm-dd' for API below.<br/>"
+        f"/api/v1.0/startdate/enddate<br/>"
     )
 
 @app.route("/api/v1.0/precipitation")
 def precipitation():
+    session = Session(engine)
     last_year = dt.date(2017,8,23) - dt.timedelta(days=365)
     precipitation_scores = session.query(Measurement.date,Measurement.prcp).filter(Measurement.date >= last_year).all()
     results_precipitation = dict(precipitation_scores)
@@ -43,13 +48,37 @@ def precipitation():
 
 @app.route("/api/v1.0/stations")
 def station():
+    session = Session(engine)
     stations = session.query(Measurement.station, func.count(Measurement.date)).group_by(Measurement.station).order_by(func.count(Measurement.date).desc()).all()
     results_stations = dict(stations)
     session.close()
     return jsonify(results_stations)
 
+@app.route("/api/v1.0/tobs")
+def tobs():
+   session = Session(engine)
+   max_temperature = session.query(Measurement.station, Measurement.tobs).filter(Measurement.date >= '2016-08-23').all()
+   results_tobs = dict(max_temperature)
+   return jsonify(results_tobs)
 
+@app.route("/api/v1.0/<start>")
+def start(start):
+    session = Session(engine)
+    start_datetime = dt.datetime.strptime(start, '%Y-%m-%d')
+    start_result = session.query(func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).filter(Measurement.date >= start_datetime).all()
+    session.close()
 
+ # Create a dictionary from the row data and append to a list of all_passengers
+    all_tobs = []
+    for min, max, avg in start_result:
+        tobs_dict = {}
+        tobs_dict["Min"] = min
+        tobs_dict["Max"] = max
+        tobs_dict["Avg"] = avg
+        all_tobs.append(tobs_dict)
+
+    return jsonify(all_tobs)
+    
 if __name__ == '__main__':
     app.run(debug=True)
 
