@@ -31,9 +31,9 @@ def welcome():
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
         f"/api/v1.0/tobs<br/>"
-        f"USE format: 'yyyy-mm-dd' for API below.<br/>"
+        f"USE format: yyyy-mm-dd for API below.<br/>"
         f"/api/v1.0/startdate<br/>"
-        f"USE format: 'yyyy-mm-dd'/'yyyy-mm-dd' for API below.<br/>"
+        f"USE format: yyyy-mm-dd/yyyy-mm-dd for API below.<br/>"
         f"/api/v1.0/startdate/enddate<br/>"
     )
 
@@ -78,7 +78,25 @@ def start(start):
         all_tobs.append(tobs_dict)
 
     return jsonify(all_tobs)
+
+@app.route("/api/v1.0/<start>/<end>")
+def start_end(start, end):
+    session = Session(engine)
+    start_datetime = dt.datetime.strptime(start, '%Y-%m-%d')
+    end_datetime = dt.datetime.strptime(end, "%Y-%m-%d")
+    start_end_result =  session.query(func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).filter(Measurement.date >= start_datetime).filter(Measurement.date <= end_datetime).all()
+    session.close()
+
+    start_end_tobs = []
+    for min, max, avg in start_end_result:
+        tobs_dict1 = {}
+        tobs_dict1["Min"] = min
+        tobs_dict1["Max"] = max
+        tobs_dict1["Avg"] = avg
+        start_end_tobs.append(tobs_dict1)
     
+    return jsonify(start_end_tobs)
+
 if __name__ == '__main__':
     app.run(debug=True)
 
